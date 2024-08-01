@@ -121,13 +121,13 @@ obj.seurat <- RenameIdents(obj.seurat, '0' = 'Fibroblasts', '1' = 'Epithelial', 
                      '6' = 'Epithelial', '7' = 'Epithelial', '8' = 'Endothelial',
                      '9' = 'Fibroblasts', '10' = 'Myeloid and B', '11' = 'Endothelial',
                      '12' = 'Epithelial', '13' = 'Epithelial', '14' = 'Epithelial',
-                     '15' = 'Endothelial', '16' = 'Epi?', '17' = 'Endothelial', #check 16
-                     '18' = 'Epithelial', '19' = '?', '20' = 'Endothelial',           #check 19,20
+                     '15' = 'Endothelial', '16' = 'RBC', '17' = 'Endothelial', #check 16
+                     '18' = 'Epithelial', '19' = 'GlialSchwann', '20' = 'Endothelial',           #check 20
                      '21' = 'Neutrophils', '22' = 'Neutrophils', '23' = 'Fibroblasts',
-                     '24' = 'Stromal', '25' = 'T Lymphoid and B', '26' = 'Epithelial',        #check 24
-                     '27'='?', '28'='Lymphatic Endothelial', '29'='Epithelial',       #check 27, 28
+                     '24' = 'StromalVSMC', '25' = 'T Lymphoid and B', '26' = 'Epithelial',        #check 24
+                     '27'='GlialSchwann', '28'='Lymphatic Endothelial', '29'='Epithelial',       #check 27, 28
                      '30' = 'Neutrophils', '31' = 'Fibroblasts', '32' = 'Fibroblasts',
-                     '33' = 'Epi?')
+                     '33' = 'RBC')
 obj.seurat$CellType <- Idents(obj.seurat)
 DimPlot(obj.seurat, group.by = 'CellType', label = T)
 
@@ -135,10 +135,14 @@ DimPlot(obj.seurat, group.by = 'CellType', split.by = 'treatment')
 
 #
 marks <- FindAllMarkers(obj.seurat, max.cells.per.ident = 500)
-marks[marks$log2FC > 2 & marks$p.adj < 0.05 & marks$cluster == '?',]
-##do this without max cells and write.csv
+marks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batch')
+marks[marks$avg_log2FC > 2 & marks$p_val_adj < 0.05 & marks$cluster == 'Stromal',]$gene
+##do this without max cells, with MAST and write.csv
 
-obj.seurat$CellType <- facter(obj.seurat$CellType, levels = c())
+obj.seurat$CellType <- factor(obj.seurat$CellType, levels = c("Epithelial", "Endothelial", "Lymphatic Endothelial",
+                                                              "Fibroblasts",
+                                                              "StromalVSMC", "GlialSchwann", "RBC", "T Lymphoid and B", "Myeloid and B",
+                                                              "Neutrophils"))
 obj.seurat$treatment <- facter(obj.seurat$treatment, levels = c("control", "4NQO control", "4NQO+ SP2509"))
 
 #dotplot of markers
@@ -146,9 +150,10 @@ library(RColorBrewer)
 library(ggplot2)
 DotPlot(obj.seurat, features =c("KRT14", "KRT5",
                                 "PECAM1","NRP1", "PDPN",
-                                "COL1A1",
+                                "COL1A1", "ACTA2", "MYH11",
                                 "CD3D", "CD19", "CD14", "FCGR3", 
-                                "CD74", "ITGAM")) + scale_colour_gradientn(colours = rev(brewer.pal(n = 11, name = "RdBu")))
+                                "CD74", "ITGAM",
+                                "PLP1", "MBP", "HBB-BT")) + scale_colour_gradientn(colours = rev(brewer.pal(n = 11, name = "RdBu"))) 
 #FeaturePlot
 FeaturePlot(obj.seurat, features =c("KRT14", "KRT5",
                                 "PECAM1","NRP1", "PDPN",
