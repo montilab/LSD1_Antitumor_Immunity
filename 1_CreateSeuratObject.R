@@ -7,6 +7,8 @@ library(SingleR)
 library(celldex)
 library(pointillism)
 library(rhdf5)
+library(ggplot2)
+library(RColorBrewer)
 #qc has already been performed. 
 
 setwd('/restricted/projectnb/montilab-p/projects/oralcancer/4nqo/lina')
@@ -74,7 +76,7 @@ obj.seurat <- ScaleData(obj.seurat, features = rownames(obj.seurat))
 obj.seurat <- RunPCA(obj.seurat, verbose = FALSE)
 ElbowPlot(obj.seurat, ndims = 40)
 obj.seurat <- FindNeighbors(obj.seurat, dims = 1:30, verbose = FALSE)
-obj.seurat <- FindClusters(obj.seurat, verbose = FALSE)
+obj.seurat <- FindClusters(obj.seurat, verbose = FALSE, resolution = 1)
 obj.seurat <- RunUMAP(obj.seurat, dims = 1:30, verbose = FALSE)
 
 DimPlot(obj.seurat, label = TRUE) + NoLegend()
@@ -88,6 +90,10 @@ g2m.genes <- cc.genes$g2m.genes
 obj.seurat <- CellCycleScoring(obj.seurat, s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
 
 DimPlot(obj.seurat, group.by = 'Phase')
+
+##add batches
+obj.seurat$batches <- with(obj.seurat, ifelse((obj.seurat$sample == "KM_BM_0318_1C" | obj.seurat$sample == "KM_BM_0318_2E" | obj.seurat$sample == "KM_BM_0318_3E" | obj.seurat$sample == "KM_BM_0318_4E" | obj.seurat$sample == "KM_BM_0318_5NC" | obj.seurat$sample == "KM_BM_0318_6E" | obj.seurat$sample == "KM_BM_0318_7E" | obj.seurat$sample == "KM_BM_0318_8NL"), "batch18", "batch19"))
+DimPlot(obj.seurat, split.by = "batches")
 
 ######use singleR to classify cells
 #add singleR celltype classification
@@ -112,37 +118,39 @@ DimPlot(obj.seurat, group.by = "singleRident", label = TRUE)
 DimPlot(obj.seurat, group.by = "singleRcelltype", label = TRUE)
 
 #rename idents
-Idents(obj.seurat) <- 'RNA_snn_res.0.8'
+Idents(obj.seurat) <- 'RNA_snn_res.1'
 a <- DimPlot(obj.seurat, label= T) + NoLegend()
 b <- DimPlot(obj.seurat, group.by = 'singleRcelltype', label = T) + NoLegend()
 a+b
-obj.seurat <- RenameIdents(obj.seurat, '0' = 'Fibroblasts', '1' = 'Epithelial', '2'= 'Epithelial',
-                     '3' = 'Epithelial', '4' = 'Endothelial', '5' = 'Epithelial',
-                     '6' = 'Epithelial', '7' = 'Epithelial', '8' = 'Endothelial',
-                     '9' = 'Fibroblasts', '10' = 'Myeloid and B', '11' = 'Endothelial',
-                     '12' = 'Epithelial', '13' = 'Epithelial', '14' = 'Epithelial',
-                     '15' = 'Endothelial', '16' = 'RBC', '17' = 'Endothelial', #check 16
-                     '18' = 'Epithelial', '19' = 'GlialSchwann', '20' = 'Endothelial',           #check 20
-                     '21' = 'Neutrophils', '22' = 'Neutrophils', '23' = 'Fibroblasts',
-                     '24' = 'StromalVSMC', '25' = 'T Lymphoid and B', '26' = 'Epithelial',        #check 24
-                     '27'='GlialSchwann', '28'='Lymphatic Endothelial', '29'='Epithelial',       #check 27, 28
-                     '30' = 'Neutrophils', '31' = 'Fibroblasts', '32' = 'Fibroblasts',
-                     '33' = 'RBC')
+obj.seurat <- RenameIdents(obj.seurat, '0' = 'Fibroblasts', '1' = 'Epithelial', '2'= 'Endothelial',
+                     '3' = 'Endothelial', '4' = 'Epithelial', '5' = 'Epithelial',
+                     '6' = 'Epithelial', '7' = 'Epithelial', '8' = 'Epithelial',
+                     '9' = 'Fibroblasts', '10' = 'Epithelial', '11' = 'Epithelial',
+                     '12' = 'Epithelial', '13' = 'Epithelial', '14' = 'Endothelial',
+                     '15' = 'Myeloid', '16' = 'Endothelial', '17' = 'Epithelial', 
+                     '18' = 'RBCs', '19' = 'Glial', '20' = 'Endothelial',           
+                     '21' = 'Neutrophils', '22' = 'Neutrophils', '23' = 'Epithelial',
+                     '24' = 'Epithelial', '25' = 'Epithelial', '26' = 'Fibroblasts',       
+                     '27'='T-Lymphocyte', '28'='Glial', '29'='Lymphatic Endothelial',       
+                     '30' = 'StromalVSMC', '31' = 'B-Lymphocyte', '32' = 'Epithelial',
+                     '33' = 'Epithelial', '34' = 'StromalVSMC', '35' = 'Neutrophils', '36' = 'Fibroblasts', '37' = 'Fibroblasts')
+#####refine stromal cluster?/ break up?
 obj.seurat$CellType <- Idents(obj.seurat)
 DimPlot(obj.seurat, group.by = 'CellType', label = T)
 
 DimPlot(obj.seurat, group.by = 'CellType', split.by = 'treatment')
 
 #
+Idents(obj.seurat) <- 'RNA_snn_res.1'
 marks <- FindAllMarkers(obj.seurat, max.cells.per.ident = 500)
 marks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batch')
-marks[marks$avg_log2FC > 2 & marks$p_val_adj < 0.05 & marks$cluster == 'Stromal',]$gene
+marks[marks$avg_log2FC > 1 & marks$p_val_adj < 0.05 & marks$cluster == '20',]$gene
 ##do this without max cells, with MAST and write.csv
 
-obj.seurat$CellType <- factor(obj.seurat$CellType, levels = c("Epithelial", "Endothelial", "Lymphatic Endothelial",
+obj.seurat$CellType <- factor(obj.seurat$CellType, levels = rev(c("Epithelial", "Endothelial", "Lymphatic Endothelial",
                                                               "Fibroblasts",
-                                                              "StromalVSMC", "GlialSchwann", "RBC", "T Lymphoid and B", "Myeloid and B",
-                                                              "Neutrophils"))
+                                                              "StromalVSMC", "Glial", "RBCs",
+                                                              "T-Lymphocyte", "B-Lymphocyte","Myeloid","Neutrophils")))
 obj.seurat$treatment <- facter(obj.seurat$treatment, levels = c("control", "4NQO control", "4NQO+ SP2509"))
 
 #dotplot of markers
@@ -156,12 +164,115 @@ DotPlot(obj.seurat, features =c("KRT14", "KRT5",
                                 "PLP1", "MBP", "HBB-BT")) + scale_colour_gradientn(colours = rev(brewer.pal(n = 11, name = "RdBu"))) 
 #FeaturePlot
 FeaturePlot(obj.seurat, features =c("KRT14", "KRT5",
+                                    "PECAM1","NRP1", "PDPN",
+                                    "COL1A1", "ACTA2", "MYH11",
+                                    "CD3D", "CD19", "CD14", "FCGR3", 
+                                    "CD74", "ITGAM",
+                                    "PLP1", "MBP", "HBB-BT"))
+
+
+#saveRDS(obj.seurat, './data/202408/20240801_SP2509.rds')
+
+
+#Figures
+#
+
+##whole umap
+pdf('./results/202408/wholeUMAP/WholeUMAP.pdf', width = 6.5, height = 5)
+DimPlot(obj.seurat, group.by = 'CellType', label = T, repel = T, label.size = 5) 
+dev.off()
+
+pdf('./results/202408/wholeUMAP/WholeUMAP_Cluster.pdf', width = 6.5, height = 5)
+DimPlot(obj.seurat, group.by = 'RNA_snn_res.1', label = T, label.size = 5) 
+dev.off()
+
+pdf('./results/202408/wholeUMAP/DotPlot_CellTypeMarkers.pdf', width = 9, height = 5)
+Idents(obj.seurat) <- 'CellType'
+dp <- DotPlot(obj.seurat, features =c("KRT14", "KRT5",
                                 "PECAM1","NRP1", "PDPN",
-                                "COL1A1",
-                                "CD3D", "CD19", "CD14", "FCGR3", 
-                                "CD74", "ITGAM"))
+                                "COL1A1", "ACTA2", "MYH11",
+                                "PLP1", "MBP", "HBB-BT",
+                                "CD3D", "CD79A","CD74",  "CD14", "FCGR3")) + scale_colour_gradient2(low = "darkblue", mid = "white", high = "red")
+#+ scale_colour_gradientn(colours = rev(brewer.pal(n = 11, name = "RdBu"))) 
+dp + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ggstyle()
+dev.off()
+
+pdf('./results/202408/wholeUMAP/FeaturePlot_CellTypeMarkers.pdf', width = 9, height = 9)
+FeaturePlot(obj.seurat, features =c("KRT14", "KRT5",
+                                      "PECAM1","NRP1", "PDPN",
+                                      "COL1A1", "ACTA2", "MYH11",
+                                      "PLP1", "MBP", "HBB-BT",
+                                      "CD3D", "CD79A","CD74",  "CD14", "FCGR3"))
+dev.off()
+
+
+###KDM1A
+pdf('./results/202408/wholeUMAP/KDM1A.pdf', width = 5, height = 4)
+FeaturePlot(obj.seurat, features = c("KDM1A"))
+dev.off()
+
+pdf('./results/202408/wholeUMAP/KDM1A_bytreatment.pdf', width = 8.5, height = 3.5)
+FeaturePlot(obj.seurat, features = c("KDM1A"), split.by = 'treatment')
+dev.off()
+
+obj.seurat$KDM1A <- obj.seurat@assays$RNA@data['KDM1A',]
+df <- obj.seurat@meta.data
+
+pdf('./results/202408/wholeUMAP/KDM1A_CellTypeboxplot.pdf', width = 7.5, height = 7)
+ggplot2::ggplot(df, aes(x=CellType, y=KDM1A, fill=CellType)) +
+  geom_boxplot(width=0.7) +
+  labs(title="", y="Normalized KDM1A Expression",x="CellType") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ 
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 12, face = "bold")) +
+  ggstyle() + NoLegend()
+dev.off()
+
+pdf('./results/202408/wholeUMAP/KDM1A_CellTypeboxplot_withTreatment.pdf', width = 12, height = 12)
+ggplot2::ggplot(df, aes(x=treatment, y=KDM1A, fill=treatment)) +
+  geom_boxplot(width=0.7) +
+  facet_wrap(facet = 'CellType') +
+  labs(title="", y="Normalized KDM1A Expression",x="Treatment") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ 
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 12, face = "bold")) +
+  stat_compare_means(comparisons = list(c("4NQO control", "control")), label.y = 2.8) + 
+  stat_compare_means(comparisons = list(c("4NQO+ SP2509", "control")), label.y = 3.1) +
+  stat_compare_means(comparisons = list(c("4NQO control", "4NQO+ SP2509")), label.y = 2.8)  + #ylim(0,2.6) +
+  scale_fill_manual(values=c("yellow", "grey", "red")) + ggstyle()
+dev.off()
+
+Idents(obj.seurat) <- 'CellType'
+celltypemarks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batches')
+write.csv(celltypemarks, './results/202408/wholeUMAP/CellTypeMarkers.csv')
+
+Idents(obj.seurat) <- 'RNA_snn_res.1'
+clustermarks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batches')
+write.csv(clustermarks, './results/202408/wholeUMAP/CellTypeMarkers.csv')
 
 
 
-saveRDS(obj.seurat, './data/202408/20240801_SP2509.rds')
 
+ggstyle <- function(font = "Helvetica", scale = 1) {
+  fs <- function(x) x * scale # Dynamic font scaling
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(family = font, size = fs(26), face = "bold", color = "#222222"),
+    plot.subtitle = ggplot2::element_text(family = font, size = fs(18), margin = ggplot2::margin(0, 0, 5, 0)),
+    plot.caption = ggplot2::element_blank(),
+    legend.position = "right",
+    legend.text.align = 0,
+    legend.background = ggplot2::element_blank(),
+    legend.title = ggplot2::element_blank(),
+    legend.key = ggplot2::element_blank(),
+    legend.text = ggplot2::element_text(family = font, size = fs(18), color = "#222222"),
+    axis.title = ggplot2::element_text(family = font, size = fs(18), color = "#222222"),
+    axis.text = ggplot2::element_text(family = font, size = fs(18), color = "#222222"),
+    axis.text.x = ggplot2::element_text(margin = ggplot2::margin(5, b = 10)),
+    # axis.ticks = ggplot2::element_blank(),
+    axis.line = ggplot2::element_line(color = "#222222"),
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.y = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    panel.background = ggplot2::element_blank(),
+    strip.background = ggplot2::element_rect(fill = "white"),
+    strip.text = ggplot2::element_text(size = fs(22), hjust = 0)
+  )
+}
