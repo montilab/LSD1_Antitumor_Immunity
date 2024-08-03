@@ -134,7 +134,10 @@ cellchat <- mergeCellChat(object.list, add.names = names(object.list))
 netVisual_bubble(cellchatem, sources.use = c("DCs"), targets.use = c("T/NK"), signaling = c("CCL","CXCL"), remove.isolate = FALSE)
 netVisual_bubble(cellchatsp, sources.use = c("DCs"), targets.use = c("T/NK"), signaling = c("CCL","CXCL"), remove.isolate = FALSE)
 #comparison
+pdf('/restricted/projectnb/montilab-p/projects/oralcancer/4nqo/lina/results/202408/CellChat_CXCLcomparisonDC_toTCell.pdf', height = 4, width = 6)
 netVisual_bubble(cellchat, sources.use = c("DCs", "ILC2"), targets.use = c("T/NK"), signaling = c("CXCL"), comparison = c(2, 1), angle.x = 45)
+dev.off()
+netVisual_bubble(cellchat, sources.use = c("DCs"), targets.use = c("T/NK"),  comparison = c(2, 1), max.dataset = 2, title.name = "Decreased signaling in LS", angle.x = 45, remove.isolate = T)
 
 #for circos
 pos.dataset = "sp2509"
@@ -142,26 +145,59 @@ features.name = pos.dataset
 cellchat <- identifyOverExpressedGenes(cellchat, group.dataset = "datasets", pos.dataset = pos.dataset, features.name = features.name, only.pos = FALSE, thresh.pc = 0.1, thresh.fc = 0.1, thresh.p = 1)
 net <- netMappingDEG(cellchat, features.name = features.name)
 
+#net contains duplicates, we need to only include 1 when an interaction is common to both treatments
+#example
+net[net$source == "DCs" & net$target == "T/NK" & net$interaction_name == "CCL6_CCR2",]
+
+#separate and combine 
+netcancer <- net[net$datasets == 'cancer',]
+netcancer$summarycol <- paste0(netcancer$source, netcancer$target, netcancer$interaction_name)
+netsp <- net[net$datasets == 'sp2509',]
+netsp$summarycol <- paste0(netsp$source, netsp$target, netsp$interaction_name)
+
+#merge
+netcomb <- merge(netcancer, netsp, by = "summarycol", all.x = T, all.y = T)
+  
+#add directionality
+netcomb <- mutate(netcomb) %>%
+  mutate(direction = case_when(
+    (!is.na(prob.x) & !is.na(prob.y) & (prob.x > prob.y) ~ 2), #up in cancer
+    (!is.na(prob.x) & !is.na(prob.y) & (prob.y > prob.x) ~ 1),  #up in SP
+    (is.na(prob.x) & !is.na(prob.y) ~ 1), #only in SP
+    (is.na(prob.y) & !is.na(prob.x) ~ 2) #only in cancer
+)) 
+
+#need consistent source name
+netcomb <- mutate(netcomb) %>%
+  mutate(sourcefinal = case_when(
+    (is.na(source.x) ~ source.y),
+    (is.na(source.y)  ~ source.x), 
+    (!is.na(source.y) & !is.na(source.x)  ~ source.x)
+)) 
+
+#need consistent source name
+netcomb <- mutate(netcomb) %>%
+  mutate(targetfinal = case_when(
+    (is.na(target.x) ~ target.y),
+    (is.na(target.y)  ~ target.x),
+    (!is.na(target.y) & !is.na(target.x)  ~ target.x)
+  )) 
+
+
 #get rid of cell types not in story( endo, fib, etc.)
 netoi <- net[(net$source == "Epithelial" | net$source == "Macrophages" | net$source == "DCs" | net$source == "ILC2" 
               | net$source == "Monocytes" | net$source == "T/NK" | net$source == "B Cells" | net$source == "Neutrophils") &
                (net$target == "Epithelial" | net$target == "Macrophages" | net$target == "DCs" | net$target == "ILC2" 
                 | net$target == "Monocytes" | net$target == "T/NK" | net$target == "B Cells" | net$target == "Neutrophils"), ]
 
-FC <- netoi
-FC$source <- factor(FC$source, levels = c(unique(FC$source)))
-FC$target <- factor(FC$target, levels = c(unique(FC$target)))
+FC <- netcomb
+FC$sourcefinal <- factor(FC$sourcefinal, levels = c(unique(FC$sourcefinal)))
+FC$targetfinal <- factor(FC$targetfinal, levels = c(unique(FC$targetfinal)))
 
-#add direction based on up in cancer or up in sp2509
-FC <- mutate(FC) %>%
-  mutate(direction = case_when(
-    (datasets == "sp2509") ~ 1, #up in sp
-    (datasets == "cancer") ~ 2)) #up in cancer
+#FC$direction <- factor(FC$direction, levels = c(1,2))
 
-FC$direction <- factor(FC$direction, levels = c(1,2))
-
-links <- data.frame(from = FC$source,
-                    to = FC$target,
+links <- data.frame(from = FC$sourcefinal,
+                    to = FC$targetfinal,
                     value = as.numeric(FC$direction))
 
 col_fun = colorRamp2(c(1,2), c("blue", "red"), transparency = 0.5)
@@ -184,5 +220,5 @@ chordDiagram(links, directional = T, self.link = 1,direction.type = c("diffHeigh
              grid.col = c( "hotpink","seagreen3", "steelblue1","yellowgreen","pink2", "gold2", "orange", "red2") ) #link.target.prop = FALSE , scale = T
 dev.off()
 
-write.csv(net, './results/202408/cellchat_comparison.csv')
+write.csv(netcomb, './results/202408/cellchat_comparison.csv')
 
