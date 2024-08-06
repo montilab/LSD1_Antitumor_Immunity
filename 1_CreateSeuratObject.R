@@ -142,8 +142,13 @@ DimPlot(obj.seurat, group.by = 'CellType', split.by = 'treatment')
 
 #
 Idents(obj.seurat) <- 'RNA_snn_res.1'
-marks <- FindAllMarkers(obj.seurat, max.cells.per.ident = 500)
-marks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batch')
+#marks <- FindAllMarkers(obj.seurat, max.cells.per.ident = 500) #don't use
+marks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batches', only.pos = T, logfc.threshold = 0.5)
+write.csv(marks, './results/202408/wholeUMAP/ClusterTypeMarkersMAST.csv')
+Idents(obj.seurat) <- 'CellType'
+marks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batches', only.pos = T, logfc.threshold = 0.5)
+write.csv(marks, './results/202408/wholeUMAP/CellTypeMarkersMAST.csv')
+
 marks[marks$avg_log2FC > 1 & marks$p_val_adj < 0.05 & marks$cluster == '20',]$gene
 ##do this without max cells, with MAST and write.csv
 
@@ -239,17 +244,25 @@ ggplot2::ggplot(df, aes(x=treatment, y=KDM1A, fill=treatment)) +
   stat_compare_means(comparisons = list(c("4NQO control", "4NQO+ SP2509")), label.y = 2.8)  + #ylim(0,2.6) +
   scale_fill_manual(values=c("yellow", "grey", "red")) + ggstyle()
 dev.off()
+write.csv(df[,c("KDM1A", "RNA_snn_res.1", "CellType", "treatment")], './results/202408/wholeUMAP/KDM1A_CellTypeboxplot_withTreatment.csv')
 
 Idents(obj.seurat) <- 'CellType'
 celltypemarks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batches')
+celltypemarks <- FindAllMarkers(obj.seurat)
 write.csv(celltypemarks, './results/202408/wholeUMAP/CellTypeMarkers.csv')
 
 Idents(obj.seurat) <- 'RNA_snn_res.1'
 clustermarks <- FindAllMarkers(obj.seurat, test.use = 'MAST', latent.vars = 'batches')
-write.csv(clustermarks, './results/202408/wholeUMAP/CellTypeMarkers.csv')
+write.csv(clustermarks, './results/202408/wholeUMAP/ClusterTypeMarkers.csv')
 
+pdf('./results/202408/wholeUMAP/H2K1_H2D1_FeaturePlot.pdf', width = 7, height = 4)
+FeaturePlot(obj.seurat, features =c("H2-K1", "H2-D1"), split.by = 'treatment')
+dev.off()
 
-
+epi <- subset(obj.seurat, idents = c("Epithelial"))
+pdf('./results/202408/Epi/H2K1_H2D1_FeaturePlot_Epi.pdf', width = 7, height = 4)
+FeaturePlot(epi, features =c("H2-K1", "H2-D1"), split.by = 'treatment')
+dev.off()
 
 ggstyle <- function(font = "Helvetica", scale = 1) {
   fs <- function(x) x * scale # Dynamic font scaling
