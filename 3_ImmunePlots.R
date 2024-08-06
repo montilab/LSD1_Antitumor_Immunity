@@ -40,7 +40,7 @@ DimPlot(dcs,  group.by = 'DCIdents', split.by = 'treatment')
 DimPlot(dcs, group.by = 'RNA_snn_res.0.3', split.by = 'treatment') 
 dev.off()
 
-pdf('./results/202408/Immune/DC_Heatmap.pdf', width = 5.5, height = 7)
+pdf('./results/202408/Immune/DC_Heatmap.pdf', width = 5.5, height = 8)
 DoHeatmap(dcs, features = top10$gene) + NoLegend()
 dev.off()
 
@@ -50,7 +50,7 @@ DimPlot(dcsnoLC, label = T, group.by = 'DCIdents')
 DimPlot(dcsnoLC, label = T, group.by = 'RNA_snn_res.0.3') + NoLegend()
 dev.off()
 
-pdf('./results/202408/Immune/DCnoLC_UMAP_Treatment.pdf', width = 9, height = 3)
+pdf('./results/202408/Immune/DCnoLC_UMAP_Treatment.pdf', width = 7, height = 3)
 DimPlot(dcsnoLC,  group.by = 'DCIdents', split.by = 'treatment')
 DimPlot(dcsnoLC, group.by = 'RNA_snn_res.0.3', split.by = 'treatment') 
 dev.off()
@@ -86,6 +86,10 @@ ggplot2::ggplot(df, aes(x=treatment, y=batf3, fill=treatment)) +
   scale_fill_manual(values=c("blue", "red", "green3"))
 dev.off()
 
+pdf('./results/202408/Immune/CXCL9_DC_UMAP.pdf', width = 7, height = 4)
+FeaturePlot(dcsnoLC, features = c("CXCL9"), split.by = 'treatment')
+dev.off()
+
 pdf('./results/202408/Immune/CXCL9DC_Treatment_BoxPlots.pdf', width = 4, height = 4)
 library(ggpubr)
 ggplot2::ggplot(df, aes(x=treatment, y=cxcl9, fill=treatment)) +
@@ -105,7 +109,7 @@ dcs$xcr1 <- dcs@assays$RNA@data['XCR1',]
 dcs$cxcl9 <- dcs@assays$RNA@data['CXCL9',]
 dcs$cxcr3 <- dcs@assays$RNA@data['CXCR3',]
 df <- dcs@meta.data
-write.csv(df[,c("batf3", "xcr1", "cxcl9","cxcr3", "DCIdents", "RNA_snn_res.0.3", "treatment")], './results/202408/Immune/DC_BoxPlots.pdf')
+write.csv(df[,c("batf3", "xcr1", "cxcl9","cxcr3", "DCIdents", "RNA_snn_res.0.3", "treatment")], './results/202408/Immune/DC_BoxPlots.csv')
 
 
 ###Tcells
@@ -173,6 +177,12 @@ ggplot2::ggplot(df, aes(x=treatment, y=IFNG, fill=treatment)) +
   stat_compare_means(comparisons = list(c("4NQO control", "4NQO+ SP2509")), label.y = 3.8)  +
   scale_fill_manual(values=c("blue", "red", "green3")) + ggstyle()
 dev.off()
+
+pdf('./results/202408/Immune/IFNG_CXCR3_TcellUMAP.pdf', width = 7, height = 4)
+FeaturePlot(tcells, features = c("IFNG", "CXCR3"), split.by = 'treatment')
+dev.off()
+
+
 
 write.csv(df[,c("TCRBC1", "TCRBC2", "IFNG", "CXCR3", "TIdents", "treatment")], './results/202408/Immune/TCellBoxplots.csv')
 
