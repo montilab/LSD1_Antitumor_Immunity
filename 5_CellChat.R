@@ -115,8 +115,11 @@ cellchatsp <- netAnalysis_computeCentrality(cellchatsp)
 
 
 ###done 
-saveRDS(cellchatem, './data/202408/cellchatcancer.rds')
-saveRDS(cellchatsp, './data/202408/cellchatcancerSP.rds')
+#saveRDS(cellchatem, './data/202408/cellchatcancer.rds')
+#saveRDS(cellchatsp, './data/202408/cellchatcancerSP.rds')
+
+cellchatem <- readRDS('./data/202408/cellchatcancer.rds')
+cellchatsp <- readRDS('./data/202408/cellchatcancerSP.rds')
 
 #check for specific interactions
 cellchatem@net$prob[, , "CXCL9_CXCR3"]["DCs", "T/NK"]
@@ -183,14 +186,13 @@ netcomb <- mutate(netcomb) %>%
     (!is.na(target.y) & !is.na(target.x)  ~ target.x)
   )) 
 
-
 #get rid of cell types not in story( endo, fib, etc.)
-netoi <- net[(net$source == "Epithelial" | net$source == "Macrophages" | net$source == "DCs" | net$source == "ILC2" 
-              | net$source == "Monocytes" | net$source == "T/NK" | net$source == "B Cells" | net$source == "Neutrophils") &
-               (net$target == "Epithelial" | net$target == "Macrophages" | net$target == "DCs" | net$target == "ILC2" 
-                | net$target == "Monocytes" | net$target == "T/NK" | net$target == "B Cells" | net$target == "Neutrophils"), ]
+netoi <- netcomb[(netcomb$sourcefinal == "Epithelial" | netcomb$sourcefinal == "Macrophages" | netcomb$sourcefinal == "DCs" | netcomb$sourcefinal == "ILC2" 
+              | netcomb$sourcefinal == "Monocytes" | netcomb$sourcefinal == "T/NK" | netcomb$sourcefinal == "B Cells" | netcomb$sourcefinal == "Neutrophils") &
+               (netcomb$targetfinal == "Epithelial" | netcomb$targetfinal == "Macrophages" | netcomb$targetfinal == "DCs" | netcomb$targetfinal == "ILC2" 
+                | netcomb$targetfinal == "Monocytes" | netcomb$targetfinal == "T/NK" | netcomb$targetfinal == "B Cells" | netcomb$targetfinal == "Neutrophils"), ]
 
-FC <- netcomb
+FC <- netoi
 FC$sourcefinal <- factor(FC$sourcefinal, levels = c(unique(FC$sourcefinal)))
 FC$targetfinal <- factor(FC$targetfinal, levels = c(unique(FC$targetfinal)))
 
@@ -200,6 +202,7 @@ links <- data.frame(from = FC$sourcefinal,
                     to = FC$targetfinal,
                     value = as.numeric(FC$direction))
 
+library(circlize)
 col_fun = colorRamp2(c(1,2), c("blue", "red"), transparency = 0.5)
 
 chordDiagram(links, directional = T, self.link = 1,direction.type = c("diffHeight", "arrows"),
