@@ -1,4 +1,4 @@
-#Final Filtering script
+#Immune cell compartments
 library(rvcheck)
 #library(singleCellTK)
 library(Seurat)
@@ -28,7 +28,7 @@ DimPlot(imm, label = TRUE, group.by = 'RNA_snn_res.0.3') + NoLegend()
 DimPlot(imm, label = TRUE, group.by = 'CellType') + NoLegend()
 
 Idents(imm) <- 'RNA_snn_res.0.3'
-immmarks <- FindAllMarkers(imm, max.cells.per.ident = 200)
+immmarks <- FindAllMarkers(imm, test.use = 'MAST', latent.vars = 'batches')
 immmarks[immmarks$avg_log2FC >0.5 & immmarks$p_val_adj < 0.05 & immmarks$cluster == '6',]$gene
 
 immmarks %>%
@@ -77,13 +77,14 @@ dcs <- RunUMAP(dcs, dims = 1:20, verbose = FALSE)
 DimPlot(dcs, label = T)
 
 Idents(dcs) <- 'RNA_snn_res.0.3'
-dcmarks <- FindAllMarkers(dcs)
+#dcmarks <- FindAllMarkers(dcs) don't use, less accurrate
+dcmarks <- FindAllMarkers(dcs, test.use = 'MAST', latent.vars = 'batches')
 dcmarks[dcmarks$avg_log2FC >2 & dcmarks$p_val_adj < 0.05 & dcmarks$cluster == '3',]$gene
 
 dcmarks %>%
   group_by(cluster) %>%
   dplyr::filter(avg_log2FC > 1) %>%
-  slice_head(n = 10) %>%
+  slice_head(n = 15) %>%
   ungroup() -> top10
 DoHeatmap(dcs, features = top10$gene) + NoLegend()
 
@@ -94,8 +95,8 @@ FeaturePlot(dcs, features = c("CD207", #LC
 FeaturePlot(dcs, features = c("CXCL9"))
 
 Idents(dcs) <- 'RNA_snn_res.0.3'
-dcs <- RenameIdents(dcs, '0' = 'LC', '1' = 'cDC2_a', '2'= 'cDC1',
-                    '3' = 'cDC2_b')
+dcs <- RenameIdents(dcs, '0' = 'LC', '1' = 'cDC2', '2'= 'cDC1',
+                    '3' = 'DC')
 dcs$DCIdents <- Idents(dcs)
 DimPlot(dcs, group.by = 'DCIdents')
 
@@ -122,7 +123,7 @@ tcells <- RunUMAP(tcells, dims = 1:10, verbose = FALSE)
 DimPlot(tcells, label = T)
 
 Idents(tcells) <- 'RNA_snn_res.0.4'
-tmarks <- FindAllMarkers(tcells)
+tmarks <- FindAllMarkers(tcells, test.use = 'MAST', latent.vars = 'batches')
 tmarks[tmarks$avg_log2FC >1 & tmarks$p_val_adj < 0.05 & tmarks$cluster == '0',]$gene
 
 tmarks %>%
